@@ -15,3 +15,4 @@ export_state.json
 *.db
 .tmp-test/
 .tmp-test-config.yaml
+.npm-cache/
