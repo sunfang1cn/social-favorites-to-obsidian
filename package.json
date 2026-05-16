@@ -1,6 +1,6 @@
 {
   "name": "@sunfang2cn/social-favorites-to-obsidian",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Sync Xiaohongshu and Zhihu favorites to Obsidian with CookieCloud, media export, and optional OpenClaw cron setup.",
   "license": "MIT",
   "repository": {
