@@ -1,0 +1,17 @@
+/.venv/
+__pycache__/
+*.pyc
+*.log
+cookiecloud.env
+.cookiecloud.env
+data/
+logs/
+notes/
+images/
+state.json
+export_state.json
+*.har
+*.sqlite
+*.db
+.tmp-test/
+.tmp-test-config.yaml
