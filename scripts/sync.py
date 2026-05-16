@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import random
 import time
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,17 @@ from common import (
     write_json,
     expand_path,
 )
+
+
+def random_sleep(min_seconds: float, max_seconds: float) -> None:
+    time.sleep(random.uniform(min_seconds, max_seconds))
+
+
+def sleep_after_detail_fetch(detail_count: int) -> None:
+    if detail_count > 0 and detail_count % 20 == 0:
+        random_sleep(40, 70)
+    else:
+        random_sleep(10, 17)
 
 
 def state_path(config: dict[str, Any], platform: str) -> Path:
@@ -68,10 +80,11 @@ def sync_xhs(config: dict[str, Any]) -> dict[str, int]:
     if pconfig.get("no_headless"):
         args.append("--no-headless")
     listed = run_json(args, timeout=900).get("notes", [])
+    if listed:
+        random_sleep(18, 30)
 
     state = read_json(state_path(config, "xhs"), {"seen_ids": {}, "failed_ids": {}})
-    created = skipped = failed = scanned = 0
-    delay = float(pconfig.get("detail_delay_seconds", 8) or 0)
+    created = skipped = failed = scanned = details_fetched = 0
     for card in listed:
         if created >= max_new or scanned >= max_scan:
             break
@@ -88,6 +101,7 @@ def sync_xhs(config: dict[str, Any]) -> dict[str, int]:
             cmd.extend(["--xsec-token", str(token)])
         if pconfig.get("no_headless"):
             cmd.append("--no-headless")
+        details_fetched += 1
         try:
             detail = run_json(cmd, timeout=180)
             detail["list_card"] = card
@@ -99,8 +113,8 @@ def sync_xhs(config: dict[str, Any]) -> dict[str, int]:
             state.setdefault("failed_ids", {})[nid] = {"at": now_iso(), "error": str(exc)[:500]}
             failed += 1
             write_sync_state(config, "xhs", state)
-        if delay and created:
-            time.sleep(delay)
+        if details_fetched:
+            sleep_after_detail_fetch(details_fetched)
     write_sync_state(config, "xhs", state)
     return {"listed": len(listed), "scanned": scanned, "created": created, "skipped": skipped, "failed": failed}
 
@@ -131,9 +145,11 @@ def sync_zhihu(config: dict[str, Any]) -> dict[str, int]:
     if not collection_ids:
         payload = run_json([py, str(collections_script), "--limit", str(pconfig.get("collection_list_limit", 50)), "--json"], timeout=300)
         collection_ids = [int(c["id"]) for c in payload.get("collections", []) if c.get("id")]
+    if collection_ids:
+        random_sleep(18, 30)
 
     state = read_json(state_path(config, "zhihu"), {"seen_ids": {}, "failed_ids": {}})
-    created = skipped = failed = listed = scanned = 0
+    created = skipped = failed = listed = scanned = details_fetched = 0
     for cid in collection_ids:
         if created >= max_new or scanned >= max_scan:
             break
@@ -161,6 +177,7 @@ def sync_zhihu(config: dict[str, Any]) -> dict[str, int]:
                 state.setdefault("failed_ids", {})[iid] = {"at": now_iso(), "error": "missing url"}
                 write_sync_state(config, "zhihu", state)
                 continue
+            details_fetched += 1
             try:
                 detail = run_json([py, str(content_script), "--url", url, "--json"], timeout=300)
                 detail["collection_id"] = cid
@@ -173,6 +190,8 @@ def sync_zhihu(config: dict[str, Any]) -> dict[str, int]:
                 failed += 1
                 state.setdefault("failed_ids", {})[iid] = {"at": now_iso(), "error": str(exc)[:500]}
                 write_sync_state(config, "zhihu", state)
+            if details_fetched:
+                sleep_after_detail_fetch(details_fetched)
     write_sync_state(config, "zhihu", state)
     return {"collections": len(collection_ids), "listed": listed, "scanned": scanned, "created": created, "skipped": skipped, "failed": failed}
 
